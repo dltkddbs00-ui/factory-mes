@@ -334,6 +334,7 @@ tr:last-child td{border-bottom:none}
     storageBucket: "factory-mes-16349.firebasestorage.app",
     messagingSenderId: "942568775047",
     appId: "1:942568775047:web:04c051d833a91e314b8722",
+    measurementId: "G-B4KHZNFWL4"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -349,6 +350,11 @@ tr:last-child td{border-bottom:none}
   window.fbWriteBatch = writeBatch;
 
   console.log("🔥 파이어베이스 창고 연결 성공!");
+  
+  // 🔥 파이어베이스가 준비된 후, 시스템 부팅 코드를 실행합니다!
+  if (window.bootApp) {
+    window.bootApp();
+  }
 </script>
 <script>
 /* ══════════════════════════════
@@ -495,10 +501,11 @@ const EXCEL_MAP={
 };
 
 /* ══════════════════════════════
-   재고 계산
+   재고 계산 (안정화)
 ══════════════════════════════ */
 function calcStockUpto(itemId,beforeDate){
   let s=0;
+  // 파이어베이스에 저장된 진짜 기록(TXN_LOG)을 기반으로 누적 계산
   TXN_LOG.forEach(t=>{
     if(t.iid===itemId&&t.dt<beforeDate){
       if(t.tp==='입고')s+=t.qty;
@@ -535,13 +542,21 @@ function schedMidnightSnap(){
   },next-now);
 }
 
+/* ══════════════════════════════
+   평균 통계
+══════════════════════════════ */
 function calcAvgStats(itemId){
   const logs=TXN_LOG.filter(t=>t.iid===itemId);
   const days=[...new Set(logs.map(t=>t.dt))].length||1;
   const totalIn=logs.filter(t=>t.tp==='입고').reduce((s,t)=>s+t.qty,0);
   const totalOut=logs.filter(t=>t.tp==='출고').reduce((s,t)=>s+t.qty,0);
   const totalScrap=logs.filter(t=>t.tp==='폐기').reduce((s,t)=>s+t.qty,0);
-  return{ avgIn:Math.round(totalIn/days*10)/10, avgOut:Math.round(totalOut/days*10)/10, avgScrap:Math.round(totalScrap/days*10)/10, days };
+  return{
+    avgIn:Math.round(totalIn/days*10)/10,
+    avgOut:Math.round(totalOut/days*10)/10,
+    avgScrap:Math.round(totalScrap/days*10)/10,
+    days
+  };
 }
 function calcRecommSafety(avgOut){return Math.ceil(avgOut*3)}
 function iname(id){const it=ITEMS.find(i=>i.id===id);return it?it.nm:id}
@@ -1573,7 +1588,8 @@ async function loadTxnsFromDB() {
 /* ══════════════════════════════
    앱 최초 실행 (비동기 부팅)
 ══════════════════════════════ */
-async function bootApp() {
+// 🔥 윈도우 전역으로 함수 노출 (파이어베이스 로드 완료 후 호출하기 위함)
+window.bootApp = async function() {
   // DB에서 데이터 3종 세트 모두 불러오기
   await loadUsersFromDB();
   await loadItemsFromDB();
@@ -1582,9 +1598,7 @@ async function bootApp() {
   snapPrevStock(todayStr());
   schedMidnightSnap();
   console.log("🚀 시스템 부팅 완료! 모든 데이터 연동 정상 작동 중.");
-}
-
-bootApp();
+};
 
 // 로그인 후 doLogin()에서 initNav/renderContent 호출
 </script>
