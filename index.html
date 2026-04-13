@@ -642,7 +642,9 @@ function renderDashboard(){
 function renderItems(){
   const onCnt=ITEMS.filter(i=>i.on).length;
   const offCnt=ITEMS.filter(i=>!i.on).length;
-  const vis=showInactive?ITEMS:ITEMS.filter(i=>i.on);
+  const vis=(showInactive?ITEMS:ITEMS.filter(i=>i.on))
+    .slice()
+    .sort((a,b)=>a.nm.localeCompare(b.nm,'ko',{sensitivity:'base'}));
   const rows=vis.length===0?`<tr><td colspan="10" style="padding:32px;text-align:center;color:#8492a6">등록된 품목이 없습니다. 품목을 등록해 주세요.</td></tr>`:
     vis.map(it=>`
       <tr style="${!it.on?'opacity:.5;background:#fafafa':''}">
